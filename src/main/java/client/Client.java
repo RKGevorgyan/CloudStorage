@@ -21,6 +21,7 @@ public class Client {
 		in = new DataInputStream(socket.getInputStream());
 		out = new DataOutputStream(socket.getOutputStream());
 		runClient();
+
 	}
 
 	private void runClient() {

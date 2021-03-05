@@ -17,6 +17,7 @@ public class Server {
 
 	public Server() {
 		try (ServerSocket server = new ServerSocket(PORT)){
+
 			System.out.println("Server started");
 			while (true) {
 				System.out.println("Server is waiting connection");
