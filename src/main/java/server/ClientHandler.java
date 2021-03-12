@@ -16,7 +16,8 @@ public class ClientHandler implements Runnable {
 
 	@Override
 	public void run() {
-		// Првоеряем не вышел ли клиент
+		// Проверяем не вышел ли клиент
+
 		new Thread(() -> {
 			while (true){
 				if (this.socket.isClosed()) {
