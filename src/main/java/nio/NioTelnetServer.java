@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -126,7 +127,9 @@ public class NioTelnetServer {
                     sendMessage("File or directory removed\n",selector,client);
                 else sendMessage("Unable to delete file or directory from path: " + rootDirectory,selector,client);
             }else if (command.startsWith("copy")){
-                copy(command);
+                if(copy(command))
+                    sendMessage("File copied\n",selector,client);
+                else sendMessage("Incorrect path\n",selector,client);
             }
             else if(command.startsWith("cat")){
                 cat(command,selector,client);
@@ -147,15 +150,17 @@ public class NioTelnetServer {
         Matcher matcher = pattern.matcher(command);
         if (matcher.find()) {
             Path path = Path.of(rootDirectory + matcher.group().replace(" ", ""));
-            Files.newBufferedReader(path)
-                    .lines()
-                    .forEach(line -> {
-                        try {
-                            sendMessage(line + "\n",selector,client);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    });
+            if (Files.exists(path)) {
+                Files.newBufferedReader(path)
+                        .lines()
+                        .forEach(line -> {
+                            try {
+                                sendMessage(line + "\n", selector, client);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        });
+            }
         }
     }
 
@@ -164,13 +169,15 @@ public class NioTelnetServer {
      * @param command
      * @throws IOException
      */
-    private void copy(String command) throws IOException {
+    private boolean copy(String command) {
         // ищем имя файла в команде
         Pattern pattern = Pattern.compile("\\s.+\\.\\w+\\s");
         Matcher matcher = pattern.matcher(command);
         String path1 = "";
+        String fileName="";
         if (matcher.find()) {
-            path1 = rootDirectory + matcher.group().replace(" ","");
+            fileName = matcher.group().replace(" ","");
+            path1 = rootDirectory + fileName;
         }
         // Ищем путь куда копировать
         pattern = Pattern.compile("to:.*");
@@ -178,12 +185,37 @@ public class NioTelnetServer {
         String path2 = "";
         if (matcher.find()){
             path2 = matcher.group().replace(" ","").replace("to:","");
+            System.out.println(path2 + " matcher");
+        }else {
+            List<String> list = new ArrayList<>(Arrays.asList(command.split(" ")));
+            path2 = rootDirectory + list.get(list.size()-1).replace(" ","");
+            System.out.println(path2 + " list");
         }
-
         // Проверяем есть ли в директории указанный файл
-        if (Files.exists(Path.of(path1))) {
-            Files.copy(Path.of(path1),Path.of(path2),StandardCopyOption.REPLACE_EXISTING);
+        if (!Files.exists(Path.of(path2)) && !(path2.contains("."))) {
+            System.out.println("Incorrect path2");
+            return false;
         }
+        if (Files.exists(Path.of(path1))) {
+            if (path2.contains(".")) {
+                try {
+                    Files.copy(Path.of(path1), Path.of(path2), StandardCopyOption.REPLACE_EXISTING);
+                    return true;
+                } catch (IOException e) {
+                    System.out.println("Incorrect path to copy");
+                    return false;
+                }
+            }else {
+                try {
+                    Files.copy(Path.of(path1), Path.of(path2 + File.separator + fileName), StandardCopyOption.REPLACE_EXISTING);
+                    return true;
+                } catch (IOException e) {
+                    System.out.println("Incorrect path to copy");
+                    return false;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -319,6 +351,6 @@ public class NioTelnetServer {
     }
 
     public static void main(String[] args) throws IOException {
-        new NioTelnetServer();
+            new NioTelnetServer();
     }
 }
